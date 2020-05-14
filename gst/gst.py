@@ -6,7 +6,7 @@ Sultan's and Peter Eastman's simulatedtempering.py, which is open source.
 
 A portion of the original license:
 
-Permission is hereby granted, free of charge, to any person obtaining a 
+Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
 to deal in the Software without restriction, including without limitation
 the rights to use, copy, modify, merge, publish, distribute, sublicense,
@@ -26,7 +26,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 import simtk.unit as unit
-from simtk.openmm.openmm import CustomIntegrator
+from simtk.openmm import CustomIntegrator
 import math
 import random
 from sys import stdout
@@ -42,35 +42,35 @@ try:
 except: have_gzip = False
 
 class SimulatedSoluteTempering(object):
-    """This script implements a serial version of generalized-REST. 
+    """This script implements a serial version of generalized-REST.
     gREST: J. Chem. Phys. 149, 072304 (2018); https://doi.org/10.1063/1.5016222
     gREST is generalized in that it can apply tempering to any subset
     of the forces. This is simple to achieve in OpenMM using force groups.
 
-    Arrange the forces such that the force to be tempered is the only force within 
+    Arrange the forces such that the force to be tempered is the only force within
     it's group. Must be used in combination with a customintegrator that scales a force group.
 
-    Only other differences to simulatedtempering.py are: 
-    1) the addition of a cutoff for the weight update factor, which is set to 1e-8 by 
-    default (the same value as in the original Wang-Landau paper). 
-    2) you must input the force group to be tempered. 
-    3) the output now includes the PE of the force group to aid in analysis. 
+    Only other differences to simulatedtempering.py are:
+    1) the addition of a cutoff for the weight update factor, which is set to 1e-8 by
+    default (the same value as in the original Wang-Landau paper).
+    2) you must input the force group to be tempered.
+    3) the output now includes the PE of the force group to aid in analysis.
 
     Otherwise see simualtedtempering.py for usage.
     """
 
     def __init__(self, simulation, forceGroup, cutoff, temperatures=None, numTemperatures=None, minTemperature=None, maxTemperature=None, weights=None, tempChangeInterval=25, reportInterval=1000, reportFile=stdout):
         """Create a new SimulatedTempering.
-        
+
         Parameters
         ----------
         simulation: Simulation
             The Simulation defining the System, Context, and Integrator to use
         forceGroup: int
-            Force group that will be tempered. Only tried with dihedrals so far. 
+            Force group that will be tempered. Only tried with dihedrals so far.
         cutoff: float
-            when to stop adjusting weights. When _weightUpdateFactor reduces below this, 
-            the _updateWeights flag turns off and weights no longer update (i.e. equilibration is over). 
+            when to stop adjusting weights. When _weightUpdateFactor reduces below this,
+            the _updateWeights flag turns off and weights no longer update (i.e. equilibration is over).
         temperatures: list
             The list of temperatures to use for tempering, in increasing order
         numTemperatures: int
@@ -126,9 +126,9 @@ class SimulatedSoluteTempering(object):
                 self._out = open(reportFile, 'w', 1)
         else:
             self._out = reportFile
-        
+
         # Initialize the weights.
-        
+
         if weights is None:
             self._weights = [0.0]*numTemperatures
             self._updateWeights = True
@@ -140,12 +140,12 @@ class SimulatedSoluteTempering(object):
             self._updateWeights = False
 
         # Select the initial scaling factor.
-        
+
         self.currentTemperature = 0
         self.simulation.integrator.setScalingFactor(self.scalingFactors[self.currentTemperature])
-        
+
         # Add a reporter to the simulation which will handle the updates and reports.
-        
+
         class STReporter(object):
             def __init__(self, st, fg):
                 self.st = st
@@ -169,32 +169,37 @@ class SimulatedSoluteTempering(object):
                 if simulation.currentStep%st.reportInterval == 0:
                     st._writeReport(state)
 
-        
+
         simulation.reporters.append(STReporter(self, self.forceGroup))
-        
+
         # Write out the header line.
-        
-        headers = ['Steps', 'Temperature (K)']
+
+        headers = ['Steps', 'Temperature (K)', 'PotentialEnergy', 'Scaling']
         for t in self.temperatures:
             headers.append('%gK Weight' % t.value_in_unit(unit.kelvin))
-        print('#"%s"' % ('"\t"').join(headers), file=self._out)
+        print('"%s"' % ('"\t"').join(headers), file=self._out)
+        #print('"'+('"\t"').join(headers)+'"', file=self._out)
+
 
     def __del__(self):
         if self._openedFile:
             self._out.close()
-    
+
+
     @property
     def weights(self):
         return [x-self._weights[0] for x in self._weights]
 
+
+
     def step(self, steps):
         """Advance the simulation by integrating a specified number of time steps."""
         self.simulation.step(steps)
-    
+
     def _attemptTemperatureChange(self, state):
         """Attempt to move to a different temperature."""
         # Compute the probability for each temperature.  This is done in log space to avoid overflow.
-        nrg = -1* state.getPotentialEnergy()
+        nrg = -1*state.getPotentialEnergy()
         logProbability = [(self._weights[i]-self.inverseTemperatures[i]*nrg) for i in range(len(self._weights))]
         maxLogProb = max(logProbability)
         offset = maxLogProb + math.log(sum(math.exp(x-maxLogProb) for x in logProbability))
@@ -204,28 +209,28 @@ class SimulatedSoluteTempering(object):
             if r < probability[j]:
                 if j != self.currentTemperature:
                     ##### Rescale the velocities.
-                    ##Velocities are not re-scaled in gREST -Lewis.  
-                    
+                    ##Velocities are not re-scaled in gREST -Lewis.
+
                     self._hasMadeTransition = True
                     self.currentTemperature = j
                     ###Instead, the scaling factor for the integrator is adjusted: -Lewis
                     self.simulation.integrator.setScalingFactor(self.scalingFactors[j])
                 if self._updateWeights:
                     # Update the weight factors.
-                    
+
                     self._weights[j] -= self._weightUpdateFactor
                     self._histogram[j] += 1
                     minCounts = min(self._histogram)
                     if minCounts > 20 and minCounts >= 0.2*sum(self._histogram)/len(self._histogram):
                         # Reduce the weight update factor and reset the histogram.
-                        
+
                         self._weightUpdateFactor *= 0.5
                         self._histogram = [0]*len(self.temperatures)
                         self._weights = [x-self._weights[0] for x in self._weights]
                     elif not self._hasMadeTransition and probability[self.currentTemperature] > 0.99:
                         # Rapidly increase the weight update factor at the start of the simulation to find
                         # a reasonable starting value.
-                        
+
                         self._weightUpdateFactor *= 2.0
                         self._histogram = [0]*len(self.temperatures)
                 return
@@ -234,10 +239,9 @@ class SimulatedSoluteTempering(object):
     def _writeReport(self, state):
         """Write out a line to the report."""
         temperature = self.temperatures[self.currentTemperature].value_in_unit(unit.kelvin)
-        values = [temperature]+[state.getPotentialEnergy().value_in_unit(unit.kilojoule/unit.mole)]+self.weights
+        #temperature = self.temperatures[self.currentTemperature]/unit.kelvin
+        values = [temperature]+[state.getPotentialEnergy().value_in_unit(unit.kilojoule/unit.mole)]+[self.scalingFactors[self.currentTemperature]]+self.weights
         print(('%d\t' % self.simulation.currentStep) + '\t'.join('%g' % v for v in values), file=self._out)
-
-
 
 ##Define a custom integrator that can scale the forces on dihedrals:
 class grestIntegrator(CustomIntegrator):
