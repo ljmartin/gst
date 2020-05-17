@@ -114,7 +114,7 @@ if __name__ == '__main__':
   st._updateWeights = False
 
   #now add the normal reporters and run!
-  simulation.reporters.append(DCDReporter(output_directory+'villin_dip_gst_traj.dcd', dcdstride))
+  simulation.reporters.append(DCDReporter(output_directory+'villin_gst_traj.dcd', dcdstride))
   simulation.reporters.append(StateDataReporter(stdout, 50000, step=True,totalSteps=number_steps+stepsDone,remainingTime=True,
                                               potentialEnergy=True, density=True, speed=True))
   simulation.step(number_steps)
