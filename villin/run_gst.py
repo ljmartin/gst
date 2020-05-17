@@ -12,15 +12,15 @@ import numpy as np
 ###Setup
 ####
 #after equilibration, standardMD and GST-MD will run for this many seconds:
-number_ns = 1
+number_ns = 1500
 one_ns = int(5e5)
 number_steps = number_ns*one_ns
 dcdstride = 50000
 
 #for simulated tempering, you need min temp, max temp, and number of temps total
 minTemp=310
-maxTemp=600
-numTemps=6
+maxTemp=750
+numTemps=7
 exchangeInterval=250
 
 def setup_system_implicit(filename, barostat=False):
