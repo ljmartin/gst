@@ -63,62 +63,18 @@ filename_implicit = './villin-implicit.pdb'
 output_directory = './'
 
 if __name__ == '__main__':
-
-  ######################
-  # Run generalizedST. #
-  ######################
-  print('Equilibrating GST weights')
+  print('Running standard MD.')
+  #########################
+  # Run standardMD first. #
+  #########################
   system, pdb = setup_system_implicit(filename_implicit)
   integrator = grestIntegrator(310*kelvin, 1/picosecond, 0.002*picoseconds, 2, 1)
   simulation = setup_simulation(system, pdb, integrator)
-
-  ###First, equilibrate the weights:
-  #The simulated tempering object:
-  st = SimulatedSoluteTempering(simulation,
-                              forceGroup=2,
-                              cutoff=1e-8,
-                              numTemperatures=numTemps,
-                              tempChangeInterval=exchangeInterval,
-                              minTemperature=minTemp*kelvin,
-                              maxTemperature=maxTemp*kelvin,
-                              reportInterval=100,
-                              reportFile='./villin_gst_temp_equilibration.dat',
-                             )
-
-  stepsDone=0
-  while st._weightUpdateFactor>st.cutoff:
-    simulation.step(250)
-    stepsDone+=250
-    print(st._weightUpdateFactor, st.currentTemperature)
-    
-
-  ###Then, run simulated tempering for real:
-  print('Running GST')
-  #remove the st reporter from the simulation object:
-  simulation.reporters.pop(0)
-  weights_store = np.array(st.weights).copy()
-  #the new simulated tempering object:
-  st = SimulatedSoluteTempering(simulation,
-                              forceGroup=2,
-                              cutoff=1e-8,
-                              numTemperatures=numTemps,
-                              tempChangeInterval=exchangeInterval,
-                              minTemperature=minTemp*kelvin,
-                              maxTemperature=maxTemp*kelvin,
-                              reportInterval=500,
-                              reportFile='./villin_gst_temp.dat',
-                             )
-  #new st objects assume they need to equilibrate first. We don't.
-  #so set the weights to what we determined, and turn off updating.
-  st._weights = list(weights_store)
-  st._updateWeights = False
-
-  #now add the normal reporters and run!
-  simulation.reporters.append(DCDReporter(output_directory+'villin_dip_gst_traj.dcd', dcdstride))
-  simulation.reporters.append(StateDataReporter(stdout, 50000, step=True,totalSteps=number_steps+stepsDone,remainingTime=True,
+  
+  #Instantiate reporters
+  simulation.reporters.append(DCDReporter(output_directory+'villin_standardmd_traj.dcd', dcdstride))
+  simulation.reporters.append(StateDataReporter(stdout, 50000, step=True, totalSteps=number_steps,remainingTime=True,
                                               potentialEnergy=True, density=True, speed=True))
   simulation.step(number_steps)
+
   
-
-
-
