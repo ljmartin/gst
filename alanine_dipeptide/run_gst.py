@@ -1,0 +1,161 @@
+import simtk
+from simtk.openmm.app import *
+from simtk.openmm import *
+from simtk.unit import *
+
+from sys import stdout
+sys.path.append('../')
+from gst.gst import grestIntegrator,SimulatedSoluteTempering
+import numpy as np
+
+####
+###Setup
+####
+#after equilibration, standardMD and GST-MD will run for this many seconds:
+number_ns = 1
+one_ns = int(5e5)
+number_steps = number_ns*one_ns
+
+#for simulated tempering, you need min temp, max temp, and number of temps total
+minTemp=310
+maxTemp=850
+numTemps=7
+exchangeInterval=50
+
+#for metadynamics, you need to set the number of bins and the time to run for. 
+num_grid_pts = 25
+bias_factor = 3 #simulation will behave as if at temp*bias_factor
+number_metad_steps = 200000
+
+
+def setup_system_implicit(filename, barostat=False):
+  """Creates a 'system' object given a pdb filename"""
+  pdb = PDBFile(filename)
+  forcefield = app.ForceField('amber99sbildn.xml', 'amber99_obc.xml')
+  system = forcefield.createSystem(pdb.topology, nonbondedMethod=app.CutoffNonPeriodic, constraints=HBonds,)
+  if barostat:
+    system.addForce(MonteCarloBarostat(1*bar, 310*kelvin))
+  set_dihedral_force_group(system)
+  print('Created system')
+  return system, pdb
+
+def set_dihedral_force_group(system, g=2):
+  """Sets the dihedral forcegroup to a number other than 0,
+  which will be used by serial tempering"""
+  print('Scanning forces:')
+  for f in system.getForces():
+    if isinstance(f, simtk.openmm.openmm.PeriodicTorsionForce):
+      print('Found the torsions - setting group to 2')
+      f.setForceGroup(2)
+    print(f.getForceGroup(), f.__class__)
+
+def setup_simulation(system, pdb, integrator):
+  """Creates a simulation object"""
+  platform = Platform.getPlatformByName('CPU')
+  #prop = {'CudaPrecision':'single'}
+  simulation = Simulation(pdb.topology, system, integrator, platform)
+  simulation.context.setPositions(pdb.positions)
+  simulation.minimizeEnergy()
+  simulation.context.setVelocitiesToTemperature(310*kelvin)
+  print('Created simulation')
+  return simulation
+
+
+filename ='./alanine-dipeptide-implicit.pdb'
+output_directory = './'
+
+if __name__ == '__main__':
+  print('Running standard MD.')
+  #########################
+  # Run standardMD first. #
+  #########################
+  system, pdb = setup_system_implicit(filename)
+  integrator = grestIntegrator(310*kelvin, 1/picosecond, 0.002*picoseconds, 2, 1)
+  simulation = setup_simulation(system, pdb, integrator)
+  
+  #Instantiate reporters
+  simulation.reporters.append(DCDReporter(output_directory+'diala_standardmd_traj.dcd', 2500))
+  simulation.reporters.append(StateDataReporter(stdout, 500, step=True,
+                                              potentialEnergy=True, density=True, speed=True))
+  simulation.step(number_steps)
+
+  ######################
+  # Run generalizedST. #
+  ######################
+  print('Equilibrating GST weights')
+  system, pdb = setup_system_implicit(filename)
+  integrator = grestIntegrator(310*kelvin, 1/picosecond, 0.002*picoseconds, 2, 1)
+  simulation = setup_simulation(system, pdb, integrator)
+
+  ###First, equilibrate the weights:
+  #The simulated tempering object:
+  st = SimulatedSoluteTempering(simulation,
+                              forceGroup=2,
+                              cutoff=1e-8,
+                              numTemperatures=numTemps,
+                              tempChangeInterval=exchangeInterval,
+                              minTemperature=minTemp*kelvin,
+                              maxTemperature=maxTemp*kelvin,
+                              reportInterval=50,
+                              reportFile='./dialanine/diala_gst_temp_equilibration.dat',
+                             )
+
+  while st._weightUpdateFactor<st.cutoff:
+    simulation.step(500)
+    print(st._weightUpdateFactor, st.currentTemperature)
+    
+
+  ###Then, run simulated tempering for real:
+  print('Running GST')
+  #remove the st reporter from the simulation object:
+  simulation.reporters.pop(0)
+  weights_store = np.array(st.weights).copy()
+  #the new simulated tempering object:
+  st = SimulatedSoluteTempering(simulation,
+                              forceGroup=2,
+                              cutoff=1e-8,
+                              numTemperatures=numTemps,
+                              tempChangeInterval=exchangeInterval,
+                              minTemperature=minTemp*kelvin,
+                              maxTemperature=maxTemp*kelvin,
+                              reportInterval=500,
+                              reportFile='./dialanine/diala_gst_temp.dat',
+                             )
+  #new st objects assume they need to equilibrate first. We don't.
+  #so set the weights to what we determined, and turn off updating.
+  st._weights = list(weights_store)
+  st._updateWeights = False
+
+  #now add the normal reporters and run!
+  simulation.reporters.append(DCDReporter(output_directory+'diala_gst_traj.dcd', 2500))
+  simulation.reporters.append(StateDataReporter(stdout, 500, step=True,
+                                              potentialEnergy=True, density=True, speed=True))
+  simulation.step(number_steps)
+  
+
+
+  ######################
+  # Run metadynamics.  #
+  ######################
+  print('Running metadynamics')
+  system, pdb = setup_system_implicit(filename)
+  integrator = LangevinIntegrator(310*kelvin, 1/picosecond, 0.002*picoseconds, 2, 1)
+
+  cv1 = CustomTorsionForce('theta')
+  cv1.addTorsion(1, 6, 8, 14)
+  phi = BiasVariable(cv1, -np.pi, np.pi, 0.5, True,gridWidth=num_grid_pts,)
+  cv2 = CustomTorsionForce('theta')
+  cv2.addTorsion(6, 8, 14, 16)
+  psi = BiasVariable(cv2, -np.pi, np.pi, 0.5,  True, gridWidth=num_grid_pts)
+
+  meta = Metadynamics(system, [phi, psi], 310*kelvin, bias_factor, 1.0*kilojoules_per_mole, 50)
+  simulation = setup_simulation(system, pdb, integrator)
+
+  simulation.reporters.append(DCDReporter('./dialanine/diala_metad_traj.dcd', 500))
+  simulation.reporters.append(StateDataReporter(stdout, 500, step=True,
+        potentialEnergy=True, density=True, speed=True))
+  simulation.context.setPositions(pdb.positions)
+  simulation.minimizeEnergy()
+  simulation.context.setVelocitiesToTemperature(310*kelvin)
+
+  meta.step(simulation, number_metad_steps)
