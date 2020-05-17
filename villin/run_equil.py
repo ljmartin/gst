@@ -70,7 +70,8 @@ if __name__ == '__main__':
   modeller.delete(to_delete)
 
   forcefield = app.ForceField('amber99sbildn.xml', 'amber99_obc.xml')
-  system = forcefield.createSystem(modeller.topology, nonbondedMethod=app.CutoffNonPeriodic, constraints=HBonds,)
+  system = forcefield.createSystem(modeller.topology, nonbondedMethod=app.CutoffNonPeriodic,
+                                   constraints=HBonds,implicitSolvent=OBC2,soluteDielectric=1.0)
   integrator = grestIntegrator(650*kelvin, 1/picosecond, 0.002*picoseconds, 2, 1)
 
   simulation = Simulation(modeller.topology, system, integrator)
@@ -83,4 +84,6 @@ if __name__ == '__main__':
         potentialEnergy=True, density=True, speed=True))
 
   simulation.step(500000)
-  PDBFile.writeFile(modeller.topology, modeller.positions, open(filename_implicit, 'w'))
+  PDBFile.writeFile(modeller.topology,
+                    simulation.context.getState(getPositions=True).getPositions(),
+                    open(filename_implicit, 'w'))
