@@ -19,15 +19,16 @@ dcdstride = 50000
 
 #for simulated tempering, you need min temp, max temp, and number of temps total
 minTemp=310
-maxTemp=750
+maxTemp=700
 numTemps=7
-exchangeInterval=250
+exchangeInterval=1000
 
 def setup_system_implicit(filename, barostat=False):
   """Creates a 'system' object given a pdb filename"""
   pdb = PDBFile(filename)
   forcefield = app.ForceField('amber99sbildn.xml', 'amber99_obc.xml')
-  system = forcefield.createSystem(pdb.topology, nonbondedMethod=app.CutoffNonPeriodic, constraints=HBonds,)
+  system = forcefield.createSystem(pdb.topology, nonbondedMethod=app.CutoffNonPeriodic, constraints=HBonds,
+                                   implicitSolvent=OBC2,implicitSolventKappa=1.0/nanometer)
   if barostat:
     system.addForce(MonteCarloBarostat(1*bar, 310*kelvin))
   set_dihedral_force_group(system)
@@ -72,6 +73,8 @@ if __name__ == '__main__':
   integrator = grestIntegrator(310*kelvin, 1/picosecond, 0.002*picoseconds, 2, 1)
   simulation = setup_simulation(system, pdb, integrator)
 
+  simulation.reporters.append(DCDReporter(output_directory+'villin_gst_equilibration.dcd', 25000))
+
   ###First, equilibrate the weights:
   #The simulated tempering object:
   st = SimulatedSoluteTempering(simulation,
@@ -95,7 +98,10 @@ if __name__ == '__main__':
   ###Then, run simulated tempering for real:
   print('Running GST')
   #remove the st reporter from the simulation object:
+  print(simulation.reporters)
   simulation.reporters.pop(0)
+  simulation.reporters.pop(0)
+  print(simulation.reporters)
   weights_store = np.array(st.weights).copy()
   #the new simulated tempering object:
   st = SimulatedSoluteTempering(simulation,

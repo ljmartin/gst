@@ -21,7 +21,8 @@ def setup_system_implicit(filename, barostat=False):
   """Creates a 'system' object given a pdb filename"""
   pdb = PDBFile(filename)
   forcefield = app.ForceField('amber99sbildn.xml', 'amber99_obc.xml')
-  system = forcefield.createSystem(pdb.topology, nonbondedMethod=app.CutoffNonPeriodic, constraints=HBonds,)
+  system = forcefield.createSystem(pdb.topology, nonbondedMethod=app.CutoffNonPeriodic, constraints=HBonds,
+                                   implicitSolvent=OBC2,implicitSolventKappa=1.0/nanometer)
   if barostat:
     system.addForce(MonteCarloBarostat(1*bar, 310*kelvin))
   set_dihedral_force_group(system)

@@ -22,7 +22,8 @@ def setup_system_implicit(filename, barostat=False):
   """Creates a 'system' object given a pdb filename"""
   pdb = PDBFile(filename)
   forcefield = app.ForceField('amber99sbildn.xml', 'amber99_obc.xml')
-  system = forcefield.createSystem(pdb.topology, nonbondedMethod=app.CutoffNonPeriodic, constraints=HBonds,)
+  system = forcefield.createSystem(pdb.topology, nonbondedMethod=app.CutoffNonPeriodic, constraints=HBonds,
+                                   implicitSolvent=OBC2,implicitSolventKappa=1.0/nanometer)
   if barostat:
     system.addForce(MonteCarloBarostat(1*bar, 310*kelvin))
   set_dihedral_force_group(system)
@@ -71,7 +72,7 @@ if __name__ == '__main__':
 
   forcefield = app.ForceField('amber99sbildn.xml', 'amber99_obc.xml')
   system = forcefield.createSystem(modeller.topology, nonbondedMethod=app.CutoffNonPeriodic,
-                                   constraints=HBonds,implicitSolvent=OBC2,soluteDielectric=1.0)
+                                   constraints=HBonds,implicitSolvent=OBC2,implicitSolventKappa=1.0/nanometer)
   integrator = grestIntegrator(650*kelvin, 1/picosecond, 0.002*picoseconds, 2, 1)
 
   simulation = Simulation(modeller.topology, system, integrator)
