@@ -12,15 +12,15 @@ import numpy as np
 ###Setup
 ####
 #after equilibration, standardMD and GST-MD will run for this many seconds:
-number_ns = 100
+number_ns = 50
 one_ns = int(5e5)
 number_steps = number_ns*one_ns
 
 #for simulated tempering, you need min temp, max temp, and number of temps total
 minTemp=310
-maxTemp=750
+maxTemp=700
 numTemps=7
-exchangeInterval=250
+exchangeInterval=500
 
 #for metadynamics, you need to set the number of bins and the time to run for. 
 num_grid_pts = 25
@@ -51,9 +51,10 @@ def set_dihedral_force_group(system, g=2):
 
 def setup_simulation(system, pdb, integrator):
   """Creates a simulation object"""
-  platform = Platform.getPlatformByName('CPU')
-  #prop = {'CudaPrecision':'single'}
-  simulation = Simulation(pdb.topology, system, integrator, platform)
+  #platform = Platform.getPlatformByName('CPU')
+  platform = Platform.getPlatformByName('OpenCL')
+  prop = {'OpenCLPrecision':'single'}
+  simulation = Simulation(pdb.topology, system, integrator, platform, prop)
   simulation.context.setPositions(pdb.positions)
   simulation.minimizeEnergy()
   simulation.context.setVelocitiesToTemperature(310*kelvin)
@@ -65,20 +66,20 @@ filename ='./alanine-dipeptide-implicit.pdb'
 output_directory = './'
 
 if __name__ == '__main__':
-  print('Running standard MD.')
-  #########################
-  # Run standardMD first. #
-  #########################
-  system, pdb = setup_system_implicit(filename)
-  integrator = grestIntegrator(310*kelvin, 1/picosecond, 0.002*picoseconds, 2, 1)
-  simulation = setup_simulation(system, pdb, integrator)
-  
-  #Instantiate reporters
-  simulation.reporters.append(DCDReporter(output_directory+'diala_standardmd_traj.dcd', 2500))
-  simulation.reporters.append(StateDataReporter(stdout, 500, step=True,
-                                              potentialEnergy=True, density=True, speed=True))
-  simulation.step(number_steps)
-
+#  print('Running standard MD.')
+#  #########################
+#  # Run standardMD first. #
+#  #########################
+#  system, pdb = setup_system_implicit(filename)
+#  integrator = grestIntegrator(310*kelvin, 1/picosecond, 0.002*picoseconds, 2, 1)
+#  simulation = setup_simulation(system, pdb, integrator)
+#  
+#  #Instantiate reporters
+#  simulation.reporters.append(DCDReporter(output_directory+'diala_standardmd_traj.dcd', 2500))
+#  simulation.reporters.append(StateDataReporter(stdout, 500, step=True,
+#                                              potentialEnergy=True, density=True, speed=True))
+#  simulation.step(number_steps)
+#
   ######################
   # Run generalizedST. #
   ######################
@@ -97,10 +98,10 @@ if __name__ == '__main__':
                               minTemperature=minTemp*kelvin,
                               maxTemperature=maxTemp*kelvin,
                               reportInterval=50,
-                              reportFile='./dialanine/diala_gst_temp_equilibration.dat',
+                              reportFile='./diala_gst_temp_equilibration.dat',
                              )
 
-  while st._weightUpdateFactor<st.cutoff:
+  while st._weightUpdateFactor>st.cutoff:
     simulation.step(500)
     print(st._weightUpdateFactor, st.currentTemperature)
     
@@ -119,12 +120,17 @@ if __name__ == '__main__':
                               minTemperature=minTemp*kelvin,
                               maxTemperature=maxTemp*kelvin,
                               reportInterval=500,
-                              reportFile='./dialanine/diala_gst_temp.dat',
+                              reportFile='./diala_gst_temp.dat',
                              )
   #new st objects assume they need to equilibrate first. We don't.
   #so set the weights to what we determined, and turn off updating.
   st._weights = list(weights_store)
   st._updateWeights = False
+  
+  ##With equilibrated weights, we can now reset the simulation to have a fair go at comparison to standardMD
+  simulation.context.setPositions(pdb.positions)
+  simulation.minimizeEnergy()
+  simulation.context.setVelocitiesToTemperature(310*kelvin)
 
   #now add the normal reporters and run!
   simulation.reporters.append(DCDReporter(output_directory+'diala_gst_traj.dcd', 2500))
@@ -139,7 +145,7 @@ if __name__ == '__main__':
   ######################
   print('Running metadynamics')
   system, pdb = setup_system_implicit(filename)
-  integrator = LangevinIntegrator(310*kelvin, 1/picosecond, 0.002*picoseconds, 2, 1)
+  integrator = LangevinIntegrator(310*kelvin, 1/picosecond, 0.002*picoseconds)
 
   cv1 = CustomTorsionForce('theta')
   cv1.addTorsion(1, 6, 8, 14)
@@ -151,7 +157,7 @@ if __name__ == '__main__':
   meta = Metadynamics(system, [phi, psi], 310*kelvin, bias_factor, 1.0*kilojoules_per_mole, 50)
   simulation = setup_simulation(system, pdb, integrator)
 
-  simulation.reporters.append(DCDReporter('./dialanine/diala_metad_traj.dcd', 500))
+  simulation.reporters.append(DCDReporter('./diala_metad_traj.dcd', 500))
   simulation.reporters.append(StateDataReporter(stdout, 500, step=True,
         potentialEnergy=True, density=True, speed=True))
   simulation.context.setPositions(pdb.positions)
