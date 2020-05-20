@@ -12,15 +12,15 @@ import numpy as np
 ###Setup
 ####
 #after equilibration, standardMD and GST-MD will run for this many seconds:
-number_ns = 1
+number_ns = 100
 one_ns = int(5e5)
 number_steps = number_ns*one_ns
 
 #for simulated tempering, you need min temp, max temp, and number of temps total
 minTemp=310
-maxTemp=850
+maxTemp=750
 numTemps=7
-exchangeInterval=50
+exchangeInterval=250
 
 #for metadynamics, you need to set the number of bins and the time to run for. 
 num_grid_pts = 25

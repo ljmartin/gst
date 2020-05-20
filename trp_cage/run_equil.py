@@ -8,51 +8,6 @@ sys.path.append('../')
 from gst.gst import grestIntegrator,SimulatedSoluteTempering
 import numpy as np
 
-####
-###Setup
-####
-#after equilibration, standardMD and GST-MD will run for this many seconds:
-number_ns = 1
-one_ns = int(5e5)
-number_steps = number_ns*one_ns
-dcdstride = 50000
-
-
-def setup_system_implicit(filename, barostat=False):
-  """Creates a 'system' object given a pdb filename"""
-  pdb = PDBFile(filename)
-  forcefield = app.ForceField('amber99sb.xml', 'amber99_obc.xml')
-  system = forcefield.createSystem(pdb.topology, nonbondedMethod=app.CutoffNonPeriodic, constraints=HBonds,
-                                   implicitSolvent=OBC2,implicitSolventKappa=1.0/nanometer)
-  if barostat:
-    system.addForce(MonteCarloBarostat(1*bar, 310*kelvin))
-  set_dihedral_force_group(system)
-  print('Created system')
-  return system, pdb
-
-def set_dihedral_force_group(system, g=2):
-  """Sets the dihedral forcegroup to a number other than 0,
-  which will be used by serial tempering"""
-  print('Scanning forces:')
-  for f in system.getForces():
-    if isinstance(f, simtk.openmm.openmm.PeriodicTorsionForce):
-      print('Found the torsions - setting group to 2')
-      f.setForceGroup(2)
-    print(f.getForceGroup(), f.__class__)
-
-def setup_simulation(system, pdb, integrator):
-  """Creates a simulation object"""
-  #platform = Platform.getPlatformByName('CPU')
-  platform = Platform.getPlatformByName('OpenCL')
-  prop = {'OpenCLPrecision':'single'}
-  
-  simulation = Simulation(pdb.topology, system, integrator, platform, prop)
-  simulation.context.setPositions(pdb.positions)
-  simulation.minimizeEnergy()
-  simulation.context.setVelocitiesToTemperature(310*kelvin)
-  print('Created simulation')
-  return simulation
-
 
 filename = './TC5b_linear.pdb'
 filename_implicit = './trp-min.pdb'

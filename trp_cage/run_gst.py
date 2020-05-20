@@ -12,7 +12,7 @@ import numpy as np
 ###Setup
 ####
 #after equilibration, standardMD and GST-MD will run for this many seconds:
-number_ns = 500
+number_ns = 200
 one_ns = int(5e5)
 number_steps = number_ns*one_ns
 dcdstride = 50000
