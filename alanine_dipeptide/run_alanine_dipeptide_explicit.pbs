@@ -1,0 +1,13 @@
+#!/bin/bash
+#PBS -u lewis
+#PBS -l select=1:ncpus=1:ngpus=1
+#PBS -q GPUque
+#PBS -N ala_dipeptide
+
+cd $PBS_O_WORKDIR
+
+source activate /home/Software/conda_envs/lewis_compchem
+
+python ./run_gst_explicit.py > ./explicit/gst.jobout
+
+ 
