@@ -4,4 +4,4 @@
 
 ## alanine dipeptide
 
-![alt text](./alanine_dipeptide/all.tif)
+![alt text](./alanine_dipeptide/all.png)
