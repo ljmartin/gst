@@ -18,7 +18,7 @@ This enhanced sampling translates to peptide folding - as shown by the trp-cage 
 
 The second figure shows the lowest RMSD structures all aligned - green is the original folded structure from NMR, blue is from standard MD (not very good alignment). and red is from serial tempering (very close alignment). 
 ![trpcage](./trp_cage/trpcage.png)
-![trpcage](./trp_cage/aligned_structures.png){:height="50%" width="50%"}
+<img src="/trp_cage/aligned_structures.png" width="48">
 
 ## lateral diffusion in the membrane
 ??
