@@ -77,24 +77,25 @@ with pm.Model() as mo:
 
 fig = plt.figure(constrained_layout=True)
 
-gs = fig.add_gridspec(2,5)
+gs = fig.add_gridspec(2,20)
+ax0 = fig.add_subplot(gs[0, :11])
+ax1 = fig.add_subplot(gs[1, :11])
+ax2 = fig.add_subplot(gs[:2, 11:])
 
-ax0 = fig.add_subplot(gs[0, :3])
-ax1 = fig.add_subplot(gs[1, :3])
-ax2 = fig.add_subplot(gs[:2, 3:])
-
-fig.set_figwidth(18)
+fig.set_figwidth(15)
 fig.set_figheight(5)
 
-
-ax0.plot(dihedrals_standardmd[:,0], label='Standard MD')
+time = np.arange(10000)/10
+ax0.plot(time, dihedrals_standardmd[:,0], label='Standard MD')
 ax0.legend()
-ax1.plot(dihedrals_gst[:,0], c='C1', label='Serial tempering')
+ax1.plot(time, dihedrals_gst[:,0], c='C1', label='Serial tempering')
 ax1.legend()
+
 for a in [ax0, ax1]:
     a.axhline(np.pi, c='k', linestyle='--')
     a.axhline(-np.pi, c='k', linestyle='--')
     a.set_ylabel('φ')
+    a.set_xlabel('Time (ns)')
 
 #doesnt work with contsrained layout:
 #fig.text(0.04, 0.5, 'Slow DoF (φ)', va='center', rotation='vertical')
@@ -120,3 +121,4 @@ ax2.legend()
 
 fig.savefig('all.tif')
 fig.savefig('all.svg')
+fig.savefig('all.png')
