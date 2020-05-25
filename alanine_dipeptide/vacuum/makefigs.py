@@ -13,12 +13,12 @@ indices = np.array([[4, 6, 8, 14],[6, 8, 14, 16]])
 
 
 ##load standard MD run:
-traj_standardmd = md.load_dcd('./trajectories/diala_standardmd_traj.dcd', top='./alanine-dipeptide-implicit.pdb')
+traj_standardmd = md.load_dcd('./diala_standardmd_traj.dcd', top='../alanine-dipeptide-implicit.pdb')
 dihedrals_standardmd = md.compute_dihedrals(traj_standardmd, indices, periodic=True)
 dihedrals_standardmd[:,0] = np.where(dihedrals_standardmd[:,0]<2, dihedrals_standardmd[:,0], dihedrals_standardmd[:,1]-np.pi)
 
 ##load GST run:
-traj_gst = md.load_dcd('./trajectories/diala_gst_traj.dcd', top='./alanine-dipeptide-implicit.pdb')
+traj_gst = md.load_dcd('./diala_gst_traj.dcd', top='../alanine-dipeptide-implicit.pdb')
 dihedrals_gst = md.compute_dihedrals(traj_gst, indices, periodic=True)
 dihedrals_gst[:,0] = np.where(dihedrals_gst[:,0]<2, dihedrals_gst[:,0], dihedrals_gst[:,1]-np.pi)
 
@@ -85,7 +85,7 @@ ax2 = fig.add_subplot(gs[:2, 11:])
 fig.set_figwidth(15)
 fig.set_figheight(5)
 
-time = np.arange(10000)/10
+time = np.arange(8000)/10
 ax0.plot(time, dihedrals_standardmd[:,0], label='Standard MD')
 ax0.legend()
 ax1.plot(time, dihedrals_gst[:,0], c='C1', label='Serial tempering')

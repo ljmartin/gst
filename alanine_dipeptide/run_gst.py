@@ -68,8 +68,6 @@ def setup_simulation(system, pdb, integrator):
 
 
 filename ='./alanine-dipeptide-implicit.pdb'
-#filename ='./alanine-dipeptide-implicit.prmtop'
-#coords_filename = './alanine-dipeptide-implicit.inpcrd'
 output_directory = './'
 
 if __name__ == '__main__':
@@ -78,7 +76,6 @@ if __name__ == '__main__':
   # Run standardMD first. #
   #########################
   system, pdb = setup_system_implicit(filename)
-  #inpcrd = AmberInpcrdFile(coords_filename)
   
   integrator = grestIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds, 2, 1)
   simulation = setup_simulation(system, pdb, integrator)
