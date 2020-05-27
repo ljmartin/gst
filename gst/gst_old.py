@@ -59,7 +59,7 @@ class SimulatedSoluteTempering(object):
     Otherwise see simualtedtempering.py for usage.
     """
 
-    def __init__(self, simulation, forceGroupSet, cutoff, temperatures=None, numTemperatures=None, minTemperature=None, maxTemperature=None, weights=None, tempChangeInterval=25, reportInterval=1000, reportFile=stdout):
+    def __init__(self, simulation, forceGroup, cutoff, temperatures=None, numTemperatures=None, minTemperature=None, maxTemperature=None, weights=None, tempChangeInterval=25, reportInterval=1000, reportFile=stdout):
         """Create a new SimulatedTempering.
 
         Parameters
@@ -88,7 +88,7 @@ class SimulatedSoluteTempering(object):
         reportFile: string or file
             The file to write reporting information to, specified as a file name or file object
         """
-        self.forceGroupSet=forceGroupSet
+        self.forceGroup=forceGroup
         self.cutoff = cutoff
         print(self.cutoff)
         self.simulation = simulation
@@ -142,10 +142,7 @@ class SimulatedSoluteTempering(object):
         # Select the initial scaling factor.
 
         self.currentTemperature = 0
-        #this was the old way, scaling by the integrator:
-        #self.simulation.integrator.setScalingFactor(self.scalingFactors[self.currentTemperature])
-        #this is the new way, scaling by parameter within the force:
-        self.simulation.context.setParameter('scalingFactor', self.scalingFactors[self.currentTemperature])
+        self.simulation.integrator.setScalingFactor(self.scalingFactors[self.currentTemperature])
 
         # Add a reporter to the simulation which will handle the updates and reports.
 
@@ -163,7 +160,7 @@ class SimulatedSoluteTempering(object):
                 return (steps, False, False, False, False)
 
             def report(self, simulation, state):
-                state = simulation.context.getState(getEnergy=True,getParameterDerivatives=True,groups=self.fg)
+                state = simulation.context.getState(getEnergy=True,groups={self.fg})
                 st = self.st
                 if st._weightUpdateFactor<st.cutoff:
                     st._updateWeights=False
@@ -173,7 +170,7 @@ class SimulatedSoluteTempering(object):
                     st._writeReport(state)
 
 
-        simulation.reporters.append(STReporter(self, self.forceGroupSet))
+        simulation.reporters.append(STReporter(self, self.forceGroup))
 
         # Write out the header line.
 
@@ -202,16 +199,7 @@ class SimulatedSoluteTempering(object):
     def _attemptTemperatureChange(self, state):
         """Attempt to move to a different temperature."""
         # Compute the probability for each temperature.  This is done in log space to avoid overflow.
-        ##potential energy for a whole force group could be calculated like this:
-        #nrg = -1*state.getPotentialEnergy()
-
-        ##Instead, we want to account for situations where a subset of the whole
-        ##force is calculated, where the subset is the interacitons that are
-        ##scaled by scalingFactor. To do this, take the derivative wrt the scalingFactor,
-        ##and the 'rise' of the derivative (being rise/run) is the contribution
-        ##of just the scaled terms.
-        nrg = state.getEnergyParameterDerivatives()['scalingFactor']/self.scalingFactors[self.currentTemperature]*unit.kilojoule/unit.mole
-
+        nrg = -1*state.getPotentialEnergy()
         logProbability = [(self._weights[i]-self.inverseTemperatures[i]*nrg) for i in range(len(self._weights))]
         maxLogProb = max(logProbability)
         offset = maxLogProb + math.log(sum(math.exp(x-maxLogProb) for x in logProbability))
@@ -226,9 +214,7 @@ class SimulatedSoluteTempering(object):
                     self._hasMadeTransition = True
                     self.currentTemperature = j
                     ###Instead, the scaling factor for the integrator is adjusted: -Lewis
-                    #self.simulation.integrator.setScalingFactor(self.scalingFactors[j])
-                    ###Instead, the global parameter 'scalingFactor' is adjusted:
-                    self.simulation.context.setParameter('scalingFactor', self.scalingFactors[j])
+                    self.simulation.integrator.setScalingFactor(self.scalingFactors[j])
                 if self._updateWeights:
                     # Update the weight factors.
 
@@ -254,7 +240,41 @@ class SimulatedSoluteTempering(object):
         """Write out a line to the report."""
         temperature = self.temperatures[self.currentTemperature].value_in_unit(unit.kelvin)
         #temperature = self.temperatures[self.currentTemperature]/unit.kelvin
-        potEnergy = state.getEnergyParameterDerivatives()['scalingFactor']/self.scalingFactors[self.currentTemperature]
-        #potEnergy = potEnergy.value_in_unit(unit.kilojoule/unit.mole)
-        values = [temperature]+[potEnergy]+[self.scalingFactors[self.currentTemperature]]+self.weights
+        values = [temperature]+[state.getPotentialEnergy().value_in_unit(unit.kilojoule/unit.mole)]+[self.scalingFactors[self.currentTemperature]]+self.weights
         print(('%d\t' % self.simulation.currentStep) + '\t'.join('%g' % v for v in values), file=self._out)
+
+##Define a custom integrator that can scale the forces on dihedrals:
+class grestIntegrator(CustomIntegrator):
+    def __init__(self, temperature, friction, dt, group, scaleFactor):
+        CustomIntegrator.__init__(self, dt)
+        #added:
+        self.addGlobalVariable("scaleFactor", scaleFactor)
+            #normal langevin:
+        self.addGlobalVariable("temperature", temperature);
+        self.addGlobalVariable("friction", friction);
+        self.addGlobalVariable("vscale", 0);
+        self.addGlobalVariable("fscale", 0);
+        self.addGlobalVariable("noisescale", 0);
+        self.addPerDofVariable("x0", 0);
+        #added:
+        self.addPerDofVariable("fg", 0)
+            #normal langevin:
+        self.addUpdateContextState();
+        self.addComputeGlobal("vscale", "exp(-dt*friction)");
+        self.addComputeGlobal("fscale", "(1-vscale)/friction");
+        self.addComputeGlobal("noisescale", "sqrt(kT*(1-vscale*vscale)); kT=0.00831451*temperature");
+        self.addComputePerDof("x0", "x");
+
+        #added:
+        self.addComputePerDof("fg", "f"+str(group))
+            #original:
+            #self.addComputePerDof("v", "vscale*v + fscale*f/m + noisescale*gaussian/sqrt(m)");
+        #new (same as AMDForceGroupIntegrator code but with a globalvariable scaling factor)
+        self.addComputePerDof("v", "vscale*v + fscale*fprime/m + noisescale*gaussian/sqrt(m); fprime=fother+fg*scaleFactor; fother=f-fg");
+            #normal langevin
+        self.addComputePerDof("x", "x+dt*v");
+        self.addConstrainPositions();
+        self.addComputePerDof("v", "(x-x0)/dt");
+
+    def setScalingFactor(self, sf):
+        self.setGlobalVariable(0, sf)
