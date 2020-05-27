@@ -16,16 +16,17 @@ from gst.utils import replace_nonbonded_force
 ###Setup
 ####
 #after equilibration, standardMD and GST-MD will run for this many seconds:
-number_ns = 1500
+number_ns = 200
 one_ns = int(5e5)
 number_steps = number_ns*one_ns
 dcdstride = 50000
 
 #for simulated tempering, you need min temp, max temp, and number of temps total
-minTemp=310
-maxTemp=700
-numTemps=7
-exchangeInterval=1000
+minTemp=280
+maxTemp=380
+baseTemp=298*kelvin
+numTemps=11
+exchangeInterval=250
 
 
 
@@ -35,7 +36,7 @@ def setup_system(filename):
   forcefield = ForceField('amber14-all.xml', 'amber14/tip3pfb.xml')
   system = forcefield.createSystem(pdb.topology, nonbondedMethod=PME,
         nonbondedCutoff=1*nanometer, constraints=HBonds)
-  system.addForce(MonteCarloBarostat(1*bar, 323*kelvin))
+  system.addForce(MonteCarloBarostat(1*bar, baseTemp))
   print('Created system')
   return system, pdb
 
@@ -48,7 +49,7 @@ def setup_simulation(system, pdb, integrator):
   simulation = Simulation(pdb.topology, system, integrator, platform, prop)
   simulation.context.setPositions(pdb.positions)
   simulation.minimizeEnergy()
-  simulation.context.setVelocitiesToTemperature(323*kelvin)
+  simulation.context.setVelocitiesToTemperature(baseTemp)
   print('Created simulation')
   return simulation
 
@@ -108,30 +109,34 @@ if __name__ == '__main__':
     print(force.__class__.__name__, force.getForceGroup(), force.__class__)
     
   #carry on as usual:
-  integrator = LangevinIntegrator(323*kelvin, 1/picosecond, 0.002*picoseconds)
+  integrator = LangevinIntegrator(baseTemp, 1/picosecond, 0.002*picoseconds)
   simulation = setup_simulation(system, pdb, integrator)
 
   simulation.reporters.append(DCDReporter(output_directory+'villin_gst_equilibration.dcd', 25000))
+  simulation.reporters.append(StateDataReporter(output_directory+'villin_gst_equilibration.out', 10000, step=True,
+                                              potentialEnergy=True, density=True, speed=True))
 
   ###First, equilibrate the weights:
   #The simulated tempering object:
   st = SimulatedSoluteTempering(simulation,
                               forceGroupSet={2,3},
                               cutoff=1e-8,
+                              baseTemp=baseTemp,
                               numTemperatures=numTemps,
                               tempChangeInterval=exchangeInterval,
                               minTemperature=minTemp*kelvin,
                               maxTemperature=maxTemp*kelvin,
-                              reportInterval=100,
+                              reportInterval=exchangeInterval,
                               reportFile='./villin_gst_temp_equilibration.dat',
                              )
 
   stepsDone=0
   st.currentTemperature=numTemps-1
+  print(st.scalingFactors)
   while st._weightUpdateFactor>st.cutoff:
-    simulation.step(250)
-    stepsDone+=250
-    print(st._weightUpdateFactor, st.currentTemperature, st.weights)
+    simulation.step(exchangeInterval)
+    stepsDone+=exchangeInterval
+    #print(st._weightUpdateFactor, st.currentTemperature, st.weights)
 
 
 
@@ -140,6 +145,7 @@ if __name__ == '__main__':
   print('Running GST')
   #remove the st reporter from the simulation object:
   print(simulation.reporters)
+  simulation.reporters.pop(0)
   simulation.reporters.pop(0)
   simulation.reporters.pop(0)
   print(simulation.reporters)
@@ -152,7 +158,7 @@ if __name__ == '__main__':
                               tempChangeInterval=exchangeInterval,
                               minTemperature=minTemp*kelvin,
                               maxTemperature=maxTemp*kelvin,
-                              reportInterval=500,
+                              reportInterval=dcdstride,
                               reportFile='./villin_gst_temp.dat',
                              )
 

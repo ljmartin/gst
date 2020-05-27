@@ -59,7 +59,7 @@ class SimulatedSoluteTempering(object):
     Otherwise see simualtedtempering.py for usage.
     """
 
-    def __init__(self, simulation, forceGroupSet, cutoff, temperatures=None, numTemperatures=None, minTemperature=None, maxTemperature=None, weights=None, tempChangeInterval=25, reportInterval=1000, reportFile=stdout):
+    def __init__(self, simulation, forceGroupSet, cutoff, baseTemp, temperatures=None, numTemperatures=None, minTemperature=None, maxTemperature=None, weights=None, tempChangeInterval=25, reportInterval=1000, reportFile=stdout):
         """Create a new SimulatedTempering.
 
         Parameters
@@ -91,6 +91,7 @@ class SimulatedSoluteTempering(object):
         self.forceGroupSet=forceGroupSet
         self.cutoff = cutoff
         print(self.cutoff)
+        self.baseTemp = baseTemp
         self.simulation = simulation
         if temperatures is None:
             if unit.is_quantity(minTemperature):
@@ -105,9 +106,19 @@ class SimulatedSoluteTempering(object):
                 raise ValueError('The temperatures must be in strictly increasing order')
         self.tempChangeInterval = tempChangeInterval
         self.reportInterval = reportInterval
-        self.inverseTemperatures = [1.0/(unit.MOLAR_GAS_CONSTANT_R*t) for t in self.temperatures]
-        self.scalingFactors = [self.inverseTemperatures[i] / self.inverseTemperatures[0] for i in range(len(self.inverseTemperatures))]
+        for i in self.temperatures:
+            print('Temperature:', i)
 
+        print('Base temperature:', self.baseTemp)
+
+        self.inverseTemperatures = [1.0/(unit.MOLAR_GAS_CONSTANT_R*t) for t in self.temperatures]
+        print('inverseTemperatures:', self.inverseTemperatures)
+        self.inverseBaseTemperature = 1.0/(unit.MOLAR_GAS_CONSTANT_R*baseTemp)
+        print('inverseBaseTemperature:', self.inverseBaseTemperature)
+        #setting all temperatures relative to lowest (not necessarily what you want - might want to simulate lower and higher than existing!
+        #self.scalingFactors = [self.inverseTemperatures[i] / self.inverseTemperatures[0] for i in range(len(self.inverseTemperatures))]
+        self.scalingFactors = [self.inverseTemperatures[i] / self.inverseBaseTemperature for i in range(len(self.inverseTemperatures))]
+        print('scalingFactors:', self.scalingFactors)
         # If necessary, open the file we will write reports to.
 
         self._openedFile = isinstance(reportFile, str)
