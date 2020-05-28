@@ -6,9 +6,9 @@ import numpy as np
 reference_pdb = md.load_pdb('./nmr_struc_1.pdb')
 
 
-standard_traj = md.load_dcd('./trp_standardmd_traj.dcd', top='./trp-min.pdb')
+standard_traj = md.load_dcd('./trajectories/trp_standardmd_traj.dcd', top='./trp-min.pdb')
 #gst_equil_traj = md.load_dcd('./trp_gst_equilibration.dcd', top='./trp-min.pdb')
-gst_traj =  md.load_dcd('./trp_gst_traj.dcd', top='./trp-min.pdb')
+gst_traj =  md.load_dcd('./trajectories/trp_gst_traj.dcd', top='./trp-min.pdb')
 
 
 rmsd_smd = md.rmsd(standard_traj, reference_pdb)
@@ -31,3 +31,7 @@ ax.legend()
 fig.savefig('trpcage.tif')
 fig.savefig('trpcage.svg')
 fig.savefig('trpcage.png')
+
+
+standard_traj[np.argmin(rmsd_smd)].save_pdb('./standard_minimum.pdb')
+gst_traj[np.argmin(rmsd_gst)].save_pdb('./gst_minimum.pdb')

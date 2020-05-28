@@ -18,6 +18,7 @@ one_ns = int(5e5)
 number_steps = number_ns*one_ns
 dcdstride = 50000
 
+
 #for simulated tempering, you need min temp, max temp, and number of temps total
 minTemp=310
 maxTemp=500
@@ -86,7 +87,7 @@ if __name__ == '__main__':
   #The simulated tempering object:
   st = SimulatedSoluteTempering(simulation,
                               forceGroupSet={2},
-                              cutoff=1e-8, #much larger than what you would normally use (it's for semi equilibration)
+                              cutoff=1e-8, 
                               baseTemp=baseTemp,
                               numTemperatures=numTemps,
                               tempChangeInterval=exchangeInterval,
