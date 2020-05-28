@@ -21,7 +21,8 @@ dihedrals_standardmd[:,0] = np.where(dihedrals_standardmd[:,0]<2, dihedrals_stan
 traj_gst = md.load_dcd('./trajectories/diala_gst_traj.dcd', top='./alanine-dipeptide-implicit.pdb')
 dihedrals_gst = md.compute_dihedrals(traj_gst, indices, periodic=True)
 dihedrals_gst[:,0] = np.where(dihedrals_gst[:,0]<2, dihedrals_gst[:,0], dihedrals_gst[:,1]-np.pi)
-
+dihedrals_gst = dihedrals_gst[::2]
+print('Lengths: SMD:', len(dihedrals_standardmd), len(dihedrals_gst))
 
 fig, ax = plt.subplots(2,1, sharey=True)
 fig.set_figwidth(15)
