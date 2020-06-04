@@ -62,16 +62,17 @@ class markov_model(pm.distributions.Discrete):
 smd= dihedrals_standardmd[:,0] < -0.25
 gst = dihedrals_gst[:,0] < -0.25
 
+#1-arr.astype(int) means 0=ground state, 1=excited state
 with pm.Model() as mo:
     a = pm.Beta('a', alpha=1, beta=1)
     b = pm.Beta('b', alpha=1, beta=1)
-    bah = markov_model('bah', p = [a,b], observed=smd.astype(int))    
+    bah = markov_model('bah', p = [a,b], observed=1-smd.astype(int))    
     trace_smd = pm.sample(1000)
 
 with pm.Model() as mo:
     a = pm.Beta('a', alpha=1, beta=1)
     b = pm.Beta('b', alpha=1, beta=1)    
-    bah = markov_model('bah', p = [a,b], observed=gst.astype(int))
+    bah = markov_model('bah', p = [a,b], observed=1-gst.astype(int))
     trace_gst = pm.sample(1000)
 
 
