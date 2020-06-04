@@ -14,7 +14,7 @@ This can be quantified by fitting a Markov state model with only two states, all
 
 
 ## trp cage
-This enhanced sampling translates to peptide folding - as shown by the trp-cage model commonly used as a test case for enhanced sampling. Trp-cage is a short peptide with a folded state having an alpha helix and a tryptophan residue enclosed in a 'cage'. Starting from the unfolded peptide, the figure below compares 200ns of standard MD and serial tempering. Following the root mean square deviation (RMSD), which measures the difference between any given structure and the native folded structure (smaller is better), one can see that serial tempering finds the lowest RMSD, having found the correct backbone  structure at about 60ns. Observing the trajectory (not shown), there is a rotation of the tryptophan into the cage conformation, making the RMSD even smaller at around 130ns. The standard MD simulation fails to find the correct conformation in this time. 
+This enhanced sampling translates to peptide folding - as shown by the trp-cage model commonly used as a test case for enhanced sampling. Trp-cage is a short peptide with a folded state having an alpha helix and a tryptophan residue enclosed in a 'cage'. Starting from the unfolded peptide, the figure below compares 200ns of standard MD and serial tempering. Following the root mean square deviation (RMSD), which measures the difference between any given structure and the native folded structure (smaller is better), one can see that serial tempering finds the lowest RMSD, having found the correct backbone  structure at about 100ns. The standard MD simulation fails to find the correct conformation in this time. We haven't determined the folding time in standard MD here, but the GST simulation folds ~40X faster than the experimental measure of 4000ns.[1]
 
 The second figure shows the lowest RMSD structures all aligned - green is the original folded structure from NMR, blue is from standard MD (not very good alignment). and red is from serial tempering (very close alignment). 
 ![trpcage](./trp_cage/trpcage.png)
@@ -22,3 +22,6 @@ The second figure shows the lowest RMSD structures all aligned - green is the or
 
 ## lateral diffusion in the membrane
 ??
+
+
+[1] https://doi.org/10.1021/ja0279141
