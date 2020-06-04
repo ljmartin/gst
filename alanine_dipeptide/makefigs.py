@@ -38,8 +38,8 @@ for a in ax:
 
 
 fig.text(0.00, 0.5, 'Slow DoF (φ)', va='center', rotation='vertical')
-fig.savefig('slow_dof.tif')
-fig.savefig('slow_dof.svg')
+fig.savefig('../figures/slow_dof.tif')
+fig.savefig('../figures/slow_dof.svg')
 
 ####Now fit a simple 2-state markov state model
 
@@ -121,6 +121,6 @@ ax2.set_title('Density')
 ax2.legend()
 
 
-fig.savefig('all.tif')
-fig.savefig('all.svg')
-fig.savefig('all.png')
+fig.savefig('../figures/all.tif')
+fig.savefig('../figures/all.svg')
+fig.savefig('../figures/all.png')

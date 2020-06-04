@@ -28,9 +28,9 @@ ax.set_xlabel('Time (ns)')
 ax.legend()
 
 
-fig.savefig('trpcage.tif')
-fig.savefig('trpcage.svg')
-fig.savefig('trpcage.png')
+fig.savefig('../figures/trpcage.tif')
+fig.savefig('../figures/trpcage.svg')
+fig.savefig('../figures/trpcage.png')
 
 
 standard_traj[np.argmin(rmsd_smd)].save_pdb('./standard_minimum.pdb')
