@@ -10,14 +10,14 @@ Typically generalized tempering has been used with replica exchange (i.e. REST).
 The slow degree of freedom (the φ dihedral angle) is sampled quite slowly in standard MD - observe the small number of transitions into the rare 'excited' state (red timeseries, left top panel). When serial tempering is applied, the sampling between states becomes much faster (blue timeseries, left bottom panel). 
 
 This can be quantified by fitting a Markov state model with only two states, allowing us to compare the probability of transitioning between the states. The probability of transitioning from the base state (φ at about -2 radian) into the excited state (φ at about 1 radian) is just over 3 times larger when serial tempering is applied, indicating ~7X faster sampling. 
-![alt text](./alanine_dipeptide/all.png)
+![alt text](./figures/ala_di.png)
 
 
 ## trp cage
 This enhanced sampling translates to peptide folding - as shown by the trp-cage model commonly used as a test case for enhanced sampling. Trp-cage is a short peptide with a folded state having an alpha helix and a tryptophan residue enclosed in a 'cage'. Starting from the unfolded peptide, the figure below compares 200ns of standard MD and serial tempering. Following the root mean square deviation (RMSD), which measures the difference between any given structure and the native folded structure (smaller is better), one can see that serial tempering finds the lowest RMSD, having found the correct backbone  structure at about 100ns. The standard MD simulation fails to find the correct conformation in this time. We haven't determined the folding time in standard MD here, but the GST simulation folds ~40X faster than the experimental measure of 4000ns.[1]
 
 The second figure shows the lowest RMSD structures all aligned - green is the original folded structure from NMR, blue is from standard MD (not very good alignment). and red is from serial tempering (very close alignment). 
-![trpcage](./trp_cage/trpcage.png)
+![trpcage](./figures/trpcage.png)
 <img src="/trp_cage/aligned_structures.png" width="650">
 
 ## lateral diffusion in the membrane
