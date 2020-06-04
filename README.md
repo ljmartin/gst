@@ -9,7 +9,7 @@ Typically generalized tempering has been used with replica exchange (i.e. REST).
 ## alanine dipeptide
 The slow degree of freedom (the φ dihedral angle) is sampled quite slowly in standard MD - observe the small number of transitions into the rare 'excited' state (red timeseries, left top panel). When serial tempering is applied, the sampling between states becomes much faster (blue timeseries, left bottom panel). 
 
-This can be quantified by fitting a Markov state model with only two states, allowing us to compare the probability of transitioning between the states. The probability of transitioning from the base state (φ at about -2 radian) into the excited state (φ at about 1 radian) is just over 3 times larger when serial tempering is applied, indicating ~3X faster sampling. 
+This can be quantified by fitting a Markov state model with only two states, allowing us to compare the probability of transitioning between the states. The probability of transitioning from the base state (φ at about -2 radian) into the excited state (φ at about 1 radian) is just over 3 times larger when serial tempering is applied, indicating ~7X faster sampling. 
 ![alt text](./alanine_dipeptide/all.png)
 
 
